@@ -94,97 +94,123 @@ def search_and_read_docs(framework_or_topic: str) -> str:
         return f"Failed to find and read documentation for {framework_or_topic}: {str(e)}"
 
 # =====================================================
-# GROUP 2: DEVELOPMENT TOOLKIT (1 consolidated tool)
+# GROUP 2: FILE & TERMINAL OPERATIONS (1 focused tool)
 # =====================================================
 
 @tool
-def dev_toolkit(action: str, target: str = "", content: str = "") -> str:
-    """Complete development toolkit. Actions:
-    FILES: 'create_file', 'read_file', 'update_file', 'list_dir', 'create_dir'
-    GIT: 'git_status', 'git_add', 'git_commit', 'git_push', 'git_pull', 'git_branch'  
-    TERMINAL: 'run_command'
-    PROJECT: 'analyze_structure', 'detect_framework'"""
+def file_operations(action: str, path: str = "", content: str = "") -> str:
+    """File and terminal operations. 
+    
+    FILE ACTIONS: 'create', 'read', 'update', 'list', 'mkdir'
+    TERMINAL: 'run' (provide command in path parameter)
+    
+    Examples:
+    - file_operations('create', 'app.js', 'console.log("hi")')  
+    - file_operations('read', 'package.json')
+    - file_operations('list', 'src/')
+    - file_operations('run', 'npm install')
+    """
     
     try:
-        # File Operations
-        if action == "create_file":
-            return _create_file(target, content)
-        elif action == "read_file":
-            return _read_file(target)
-        elif action == "update_file":
-            return _update_file(target, content)
-        elif action == "list_dir":
-            return _list_directory(target or ".")
-        elif action == "create_dir":
-            return _create_directory(target)
-            
-        # Git Operations
-        elif action == "git_status":
-            return _run_terminal_command("git status")
-        elif action == "git_add":
-            return _run_terminal_command(f"git add {target}")
-        elif action == "git_commit":
-            return _run_terminal_command(f'git commit -m "{content}"')
-        elif action == "git_push":
-            return _run_terminal_command("git push")
-        elif action == "git_pull":
-            return _run_terminal_command("git pull")
-        elif action == "git_branch":
-            if target:
-                return _run_terminal_command(f"git checkout -b {target}")
-            else:
-                return _run_terminal_command("git branch")
-                
-        # Terminal Operations
-        elif action == "run_command":
-            return _run_terminal_command(target)
-            
-        # Project Analysis
-        elif action == "analyze_structure":
-            return _analyze_project_structure(target or ".")
-        elif action == "detect_framework":
-            return _detect_framework(target or ".")
+        if action == "create":
+            return _create_file(path, content)
+        elif action == "read":
+            return _read_file(path)
+        elif action == "update":
+            return _update_file(path, content)
+        elif action == "list":
+            return _list_directory(path or ".")
+        elif action == "mkdir":
+            return _create_directory(path)
+        elif action == "run":
+            return _run_terminal_command(path)  # path contains the command
         else:
-            return f"❌ Invalid action. Available: create_file, read_file, update_file, list_dir, create_dir, git_status, git_add, git_commit, git_push, git_pull, git_branch, run_command, analyze_structure, detect_framework"
+            return "❌ Invalid action. Use: create, read, update, list, mkdir, run"
             
     except Exception as e:
-        return f"❌ Dev toolkit error: {str(e)}"
+        return f"❌ File operation failed: {str(e)}"
 
 # =====================================================
-# GROUP 3: SYSTEM CONTROLLER (1 consolidated tool)
+# GROUP 3: GIT OPERATIONS (1 focused tool)
 # =====================================================
 
 @tool
-def system_controller(action: str, target: str = "", data: str = "") -> str:
-    """Complete system control. Actions:
-    APPS: 'open_app', 'close_app', 'list_apps'
-    WEB: 'search_platform', 'open_website'
-    SYSTEM: 'lock', 'sleep', 'volume_up', 'volume_down', 'mute'"""
+def git_operations(action: str, message_or_files: str = "") -> str:
+    """Git version control operations.
+    
+    ACTIONS: 'status', 'add', 'commit', 'push', 'pull', 'log'
+    
+    Examples:
+    - git_operations('status')
+    - git_operations('add', '.')  
+    - git_operations('commit', 'Added new feature')
+    - git_operations('push')
+    """
     
     try:
-        # Application Control
-        if action == "open_app":
+        if action == "status":
+            return _run_terminal_command("git status")
+        elif action == "add":
+            files = message_or_files or "."
+            return _run_terminal_command(f"git add {files}")
+        elif action == "commit":
+            if not message_or_files:
+                return "❌ Commit message required"
+            return _run_terminal_command(f'git commit -m "{message_or_files}"')
+        elif action == "push":
+            return _run_terminal_command("git push")
+        elif action == "pull":
+            return _run_terminal_command("git pull")
+        elif action == "log":
+            return _run_terminal_command("git log --oneline -10")
+        else:
+            return "❌ Invalid action. Use: status, add, commit, push, pull, log"
+            
+    except Exception as e:
+        return f"❌ Git operation failed: {str(e)}"
+
+# =====================================================
+# GROUP 4: SYSTEM CONTROLLER (1 consolidated tool)
+# =====================================================
+
+@tool
+def system_controller(action: str, target: str = "", query: str = "") -> str:
+    """Complete system and application control.
+    
+    APP ACTIONS: 'open', 'close', 'list'
+    WEB ACTIONS: 'search' (target=platform, query=search_term), 'website' (target=url)
+    SYSTEM: 'lock', 'sleep', 'volume_up', 'volume_down', 'mute'
+    
+    Examples:
+    - system_controller('open', 'chrome')
+    - system_controller('search', 'youtube', 'Python tutorials')  
+    - system_controller('website', 'https://github.com')
+    - system_controller('lock')
+    """
+    
+    try:
+        # App control
+        if action == "open":
             return _open_application(target)
-        elif action == "close_app":
+        elif action == "close":
             return _close_application(target)
-        elif action == "list_apps":
+        elif action == "list":
             return _list_user_applications()
             
-        # Web Control
-        elif action == "search_platform":
-            platform, query = target, data
-            return _search_and_open_web(platform, query)
-        elif action == "open_website":
+        # Web control  
+        elif action == "search":
+            return _search_and_open_web(target, query)
+        elif action == "website":
             return _open_website(target)
             
-        # System Control
+        # System control
         elif action in ["lock", "sleep", "volume_up", "volume_down", "mute"]:
             return _system_control(action)
         else:
-            return f"❌ Invalid action. Available: open_app, close_app, list_apps, search_platform, open_website, lock, sleep, volume_up, volume_down, mute"
+            return "❌ Invalid action. Use: open, close, list, search, website, lock, sleep, volume_up, volume_down, mute"
             
     except Exception as e:
-        return f"❌ System controller error: {str(e)}"
+        return f"❌ System operation failed: {str(e)}"
 
 # =====================================================
 # HELPER FUNCTIONS (Internal - not tools)

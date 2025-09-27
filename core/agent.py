@@ -6,7 +6,8 @@ from core.tools import (
     web_search,
     read_documentation,
     search_and_read_docs,
-    dev_toolkit,
+    file_operations,
+    git_operations,
     system_controller,
 )
 import json
@@ -16,13 +17,14 @@ import os
 
 class Nova:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.7)
 
         self.tools = [
             web_search,
             read_documentation,
             search_and_read_docs,
-            dev_toolkit,
+            file_operations,
+            git_operations,
             system_controller,
         ]
 
@@ -85,29 +87,34 @@ SYSTEM CONTEXT:
 AVAILABLE TOOLS & SMART USAGE:
 
 **Information & Research:**
-- web_search: Current info, prices, news, versions, general questions
-- read_documentation: Read specific documentation URLs
-- search_and_read_docs: Find and read framework/library docs
+- web_search: Current info, prices, news, versions
+- read_documentation: Read specific documentation URLs  
+- search_and_read_docs: Find and read framework docs
 
-**Development Toolkit:**
-- dev_toolkit: Complete development operations
-  • Files: dev_toolkit("create_file", "path", "content")
-  • Git: dev_toolkit("git_commit", "", "commit message")
-  • Terminal: dev_toolkit("run_command", "npm install")
-  • Analysis: dev_toolkit("analyze_structure"), dev_toolkit("detect_framework")
+**Development Operations:**
+- file_operations: Complete file & terminal management
+  • Files: file_operations('create', 'app.js', 'code...')
+  • Terminal: file_operations('run', 'npm install')
+  • Folders: file_operations('list', 'src/'), file_operations('mkdir', 'components/')
 
-**System Controller:**
-- system_controller: Complete system & app management
-  • Apps: system_controller("open_app", "chrome")
-  • Web: system_controller("search_platform", "youtube", "React tutorials")
-  • System: system_controller("lock"), system_controller("volume_up")
+- git_operations: Version control management  
+  • Status: git_operations('status')
+  • Commit: git_operations('commit', 'Fixed bug')
+  • Push/Pull: git_operations('push'), git_operations('pull')
+
+**System Control:**
+- system_controller: Apps, web, and system management
+  • Apps: system_controller('open', 'chrome')
+  • Search: system_controller('search', 'youtube', 'React tutorials')
+  • System: system_controller('lock'), system_controller('volume_up')
 
 USAGE EXAMPLES:
-- "Create a React component" → dev_toolkit("create_file", "Component.jsx", "code...")
-- "Commit my changes" → dev_toolkit("git_commit", "", "Added new feature")
-- "Open YouTube and search for Python" → system_controller("search_platform", "youtube", "Python tutorials")
-- "What's my git status?" → dev_toolkit("git_status")
-- "Lock my computer" → system_controller("lock")
+- "Create a React component" → file_operations('create', 'Component.jsx', 'react code...')
+- "What's my git status?" → git_operations('status')  
+- "Commit changes" → git_operations('commit', 'Added feature')
+- "Search YouTube for Python" → system_controller('search', 'youtube', 'Python tutorials')
+- "Install dependencies" → file_operations('run', 'npm install')
+
 
 BEHAVIOR PATTERNS:
 - **General chat**: Be the friendly companion with a friendly personality
