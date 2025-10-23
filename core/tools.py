@@ -1,5 +1,3 @@
-# core/tools.py - CONSOLIDATED VERSION
-
 from langchain_core.tools import tool
 from google import genai
 from google.genai import types
@@ -238,6 +236,7 @@ def _create_file(file_path: str, content: str) -> str:
 def _read_file(file_path: str) -> str:
     """Internal function to read files."""
     try:
+        print(f"📂 Reading file: {file_path}")
         project_root = Path.cwd()
         full_path = project_root / file_path
         
@@ -254,6 +253,7 @@ def _read_file(file_path: str) -> str:
 def _update_file(file_path: str, content: str) -> str:
     """Internal function to update files."""
     try:
+        print(f"🛠️ Updating file: {file_path}")
         project_root = Path.cwd()
         full_path = project_root / file_path
         
@@ -273,6 +273,7 @@ def _update_file(file_path: str, content: str) -> str:
 def _list_directory(dir_path: str) -> str:
     """Internal function to list directories."""
     try:
+        print(f"📁 Listing directory: {dir_path}")
         project_root = Path.cwd()
         full_path = project_root / dir_path
         
@@ -294,6 +295,7 @@ def _list_directory(dir_path: str) -> str:
 def _create_directory(dir_path: str) -> str:
     """Internal function to create directories."""
     try:
+        print(f"📂 Creating directory: {dir_path}")
         project_root = Path.cwd()
         full_path = project_root / dir_path
         
@@ -354,47 +356,6 @@ def _run_terminal_command(command: str) -> str:
         return "❌ Command timed out (30 seconds)"
     except Exception as e:
         return f"❌ Command failed: {str(e)}"
-
-def _analyze_project_structure(path: str) -> str:
-    """Analyze project structure and provide insights."""
-    try:
-        project_path = Path.cwd() / path
-        structure = []
-        
-        for item in project_path.rglob('*'):
-            if item.is_file() and len(structure) < 50:  # Limit output
-                rel_path = item.relative_to(project_path)
-                structure.append(str(rel_path))
-        
-        return f"📊 Project Structure Analysis:\n" + "\n".join(f"• {item}" for item in sorted(structure))
-    except Exception as e:
-        return f"❌ Failed to analyze structure: {str(e)}"
-
-def _detect_framework(path: str) -> str:
-    """Detect framework used in project."""
-    try:
-        project_path = Path.cwd() / path
-        frameworks = []
-        
-        # Check for common framework files
-        if (project_path / "package.json").exists():
-            frameworks.append("Node.js/JavaScript project")
-        if (project_path / "requirements.txt").exists():
-            frameworks.append("Python project")
-        if (project_path / "next.config.js").exists():
-            frameworks.append("Next.js")
-        if (project_path / "src/App.js").exists():
-            frameworks.append("React")
-        if (project_path / "angular.json").exists():
-            frameworks.append("Angular")
-        
-        if frameworks:
-            return f"🔍 Detected frameworks: {', '.join(frameworks)}"
-        else:
-            return "❓ No specific framework detected"
-            
-    except Exception as e:
-        return f"❌ Failed to detect framework: {str(e)}"
 
 # Your existing helper functions for system operations
 def _open_application(app_name: str) -> str:
@@ -466,6 +427,7 @@ def _open_windows_app(app_name: str) -> str:
     if app_lower in common_paths:
         for path in common_paths[app_lower]:
             try:
+                print(f"🔍 Trying path: {path}...")
                 # Expand environment variables
                 expanded_path = os.path.expandvars(path)
                 
@@ -483,6 +445,7 @@ def _open_windows_app(app_name: str) -> str:
     
     # Strategy 2: Try Windows Start Menu search
     try:
+        print(f"🔍 Trying Start Menu search for: {app_name}...")
         # Use PowerShell to search and launch via Start Menu
         powershell_cmd = f'''
         $app = Get-StartApps | Where-Object {{$_.Name -like "*{app_name}*"}} | Select-Object -First 1
@@ -509,6 +472,7 @@ def _open_windows_app(app_name: str) -> str:
     
     # Strategy 3: Try simple command (might work for some apps)
     try:
+        print(f"🔍 Trying simple command: {app_name}...")
         subprocess.Popen(app_name, shell=True)
         return f"✅ Opened {app_name} (simple command)"
     except Exception:
@@ -516,6 +480,7 @@ def _open_windows_app(app_name: str) -> str:
     
     # Strategy 4: Try with .exe extension
     try:
+        print(f"🔍 Trying {app_name}.exe...")
         subprocess.Popen(f"{app_name}.exe", shell=True)
         return f"✅ Opened {app_name}.exe"
     except Exception:
@@ -572,6 +537,8 @@ def _open_linux_app(app_name: str) -> str:
     pass
 
 def _close_application(app_name: str) -> str:
+    """Close specific user applications safely."""
+    
     # Map common names to process names
     app_mappings = {
         'chrome': 'chrome.exe',
@@ -592,12 +559,19 @@ def _close_application(app_name: str) -> str:
         'powerpoint': 'powerpnt.exe',
         'notepad': 'notepad.exe',
         'calculator': 'calc.exe',
+        # SPECIAL HANDLING FOR EXPLORER
         'file explorer': 'explorer.exe',
         'explorer': 'explorer.exe'
     }
     
-    # Get the actual process name
-    target_process = app_mappings.get(app_name.lower(), f"{app_name.lower()}.exe")
+    app_lower = app_name.lower()
+    
+    # SAFETY CHECK: Never close explorer.exe
+    if app_name.lower() in ['explorer', 'file explorer']:
+        return "⚠️ Cannot close File Explorer - it's essential for Windows desktop. Use Windows key + E to open new windows instead."
+    
+    # Regular application closing for other apps
+    target_process = app_mappings.get(app_lower, f"{app_lower}.exe")
     
     closed_count = 0
     for proc in psutil.process_iter(['pid', 'name']):
@@ -609,11 +583,9 @@ def _close_application(app_name: str) -> str:
             continue
     
     if closed_count > 0:
-        return f"✅ Closed {closed_count} instance(s) of {_get_friendly_app_name(app_name.lower())}"
+        return f"✅ Closed {closed_count} instance(s) of {_get_friendly_app_name(app_lower)}"
     else:
-        return f"❌ No running instances of {_get_friendly_app_name(app_name.lower())} found"
-
-    pass
+        return f"❌ No running instances of {_get_friendly_app_name(app_lower)} found"
 
 def _list_user_applications() -> str:
     # Known user applications (common ones people actually use)
@@ -654,6 +626,7 @@ def _list_user_applications() -> str:
     
     for proc in psutil.process_iter(['pid', 'name', 'exe']):
         try:
+            print(f"🔍 Inspecting process: {proc.info['name']}")
             proc_name = proc.info['name'].lower()
             
             # Filter 1: Must be in our known user apps list
@@ -802,6 +775,7 @@ def _open_website(url: str) -> str:
 
 def _system_control(action: str) -> str:
     try:
+        print(f"🔧 Performing system action: {action}")
         os_type = platform.system()
         
         commands = {

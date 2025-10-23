@@ -17,7 +17,7 @@ import os
 
 class Nova:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.7)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
 
         self.tools = [
             web_search,
@@ -82,7 +82,7 @@ COMMUNICATION STYLE:
 
 SYSTEM CONTEXT:
 - Operating System: {platform.platform()}
--Current time: {current_time.strftime("%A, %B %d, %Y - %I:%M %p")}
+- Current time: {current_time.strftime("%A, %B %d, %Y - %I:%M %p")}
 
 AVAILABLE TOOLS & SMART USAGE:
 
