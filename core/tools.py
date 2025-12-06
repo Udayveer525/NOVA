@@ -9,6 +9,7 @@ import os
 import webbrowser
 import urllib.parse
 import psutil
+import winreg
 
 # =====================================================
 # GROUP 1: INFORMATION & RESEARCH (Keep as-is - 3 tools)
@@ -99,13 +100,14 @@ def search_and_read_docs(framework_or_topic: str) -> str:
 def file_operations(action: str, path: str = "", content: str = "") -> str:
     """File and terminal operations. 
     
-    FILE ACTIONS: 'create', 'read', 'update', 'list', 'mkdir'
+    FILE ACTIONS: 'create', 'read', 'update', 'list', 'mkdir', 'mkdir_batch'
     TERMINAL: 'run' (provide command in path parameter)
     
     Examples:
     - file_operations('create', 'app.js', 'console.log("hi")')  
     - file_operations('read', 'package.json')
     - file_operations('list', 'src/')
+    - file_operations('mkdir_batch', 'dir1,dir2,dir3/subdir')
     - file_operations('run', 'npm install')
     """
     
@@ -120,6 +122,8 @@ def file_operations(action: str, path: str = "", content: str = "") -> str:
             return _list_directory(path or ".")
         elif action == "mkdir":
             return _create_directory(path)
+        elif action == "mkdir_batch": 
+            return _create_directories_batch(path)
         elif action == "run":
             return _run_terminal_command(path)  # path contains the command
         else:
@@ -307,6 +311,55 @@ def _create_directory(dir_path: str) -> str:
     except Exception as e:
         return f"❌ Failed to create directory: {str(e)}"
 
+def _create_directories_batch(paths: str) -> str:
+    """Create multiple directories in one operation (comma-separated paths)."""
+    try:
+        if not paths or not paths.strip():
+            return "❌ No directory paths provided"
+        
+        # Split by comma and clean whitespace
+        dir_list = [p.strip() for p in paths.split(',') if p.strip()]
+        
+        if not dir_list:
+            return "❌ No valid directory paths provided"
+        
+        project_root = Path.cwd()
+        created = []
+        failed = []
+        
+        for dir_path in dir_list:
+            try:
+                full_path = project_root / dir_path
+                
+                # Security check
+                if not str(full_path.resolve()).startswith(str(project_root.resolve())):
+                    failed.append(f"{dir_path} (outside project)")
+                    continue
+                
+                # Create directory
+                full_path.mkdir(parents=True, exist_ok=True)
+                created.append(dir_path)
+                
+            except Exception as e:
+                failed.append(f"{dir_path} ({str(e)})")
+        
+        # Build result message
+        result = []
+        if created:
+            result.append(f"✅ Created {len(created)} directories:")
+            for dir_path in created:
+                result.append(f"  📁 {dir_path}")
+        
+        if failed:
+            result.append(f"\n❌ Failed to create {len(failed)} directories:")
+            for failure in failed:
+                result.append(f"  ⚠️ {failure}")
+        
+        return "\n".join(result) if result else "❌ No directories created"
+        
+    except Exception as e:
+        return f"❌ Batch directory creation failed: {str(e)}"
+    
 def _run_terminal_command(command: str) -> str:
     """Internal function to run terminal commands."""
     safe_commands = {
@@ -349,15 +402,149 @@ def _run_terminal_command(command: str) -> str:
     
     try:
         print(f"💻 Executing: {command}")
-        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, cwd=Path.cwd())
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=60, cwd=Path.cwd())
         output = result.stdout if result.stdout else result.stderr
         return f"💻 [{current_os}] {command}\n{output.strip()}"
     except subprocess.TimeoutExpired:
-        return "❌ Command timed out (30 seconds)"
+        return "❌ Command timed out (60 seconds)"
     except Exception as e:
         return f"❌ Command failed: {str(e)}"
 
-# Your existing helper functions for system operations
+
+def _find_app_in_registry(app_name: str) -> str:
+    """Find application executable path from Windows Registry (FAST & RELIABLE)."""
+    
+    # Registry locations where Windows stores installed apps
+    registry_paths = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths"),
+    ]
+    
+    if(app_name.lower().endswith('.exe')):
+        app_name.strip('.exe')
+    
+    # Try common executable name variations
+    possible_names = [
+        f"{app_name}.exe",
+        f"{app_name.lower()}.exe",
+        f"{app_name.capitalize()}.exe",
+    ]
+    
+    for root_key, sub_key_path in registry_paths:
+        for exe_name in possible_names:
+            try:
+                # Try to open the registry key for this app
+                app_key_path = f"{sub_key_path}\\{exe_name}"
+                key = winreg.OpenKey(root_key, app_key_path)
+                
+                # Read the default value (the executable path)
+                exe_path, _ = winreg.QueryValueEx(key, "")
+                winreg.CloseKey(key)
+                
+                # Verify the file actually exists
+                if exe_path and Path(exe_path).exists():
+                    return exe_path
+                    
+            except (FileNotFoundError, OSError):
+                continue
+            except Exception:
+                continue
+    
+    return None
+
+def _find_app_via_powershell(app_name: str) -> str:
+    """Use PowerShell's Get-Command to find executables in PATH."""
+    try:
+        ps_command = f'(Get-Command {app_name} -ErrorAction SilentlyContinue).Source'
+        
+        result = subprocess.run(
+            ['powershell', '-Command', ps_command],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            shell=True
+        )
+        
+        if result.returncode == 0 and result.stdout.strip():
+            exe_path = result.stdout.strip()
+            if Path(exe_path).exists():
+                return exe_path
+            
+        return None
+        
+    except Exception:
+        return None
+
+def _open_via_start_menu(app_name: str) -> bool:
+    """Open app using Windows Start Menu search (comprehensive coverage)."""
+    try:
+        ps_command = f'''
+        $app = Get-StartApps | Where-Object {{$_.Name -like "*{app_name}*"}} | Select-Object -First 1
+        if ($app) {{
+            Start-Process "shell:AppsFolder\\$($app.AppID)"
+            Write-Output "Success"
+        }}
+        '''
+        
+        result = subprocess.run(
+            ['powershell', '-Command', ps_command],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            shell=True
+        )
+        
+        return "Success" in result.stdout
+        
+    except Exception:
+        return False
+
+def _get_common_app_paths(app_name: str) -> list:
+    """Get list of common paths for popular applications (instant fallback)."""
+    
+    common_paths = {
+        'chrome': [
+            r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+            r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+            r'%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe'
+        ],
+        'brave': [
+            r'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe',
+            r'C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe',
+            r'%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe'
+        ],
+        'edge': [
+            r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+            r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
+        ],
+        'firefox': [
+            r'C:\Program Files\Mozilla Firefox\firefox.exe',
+            r'C:\Program Files (x86)\Mozilla Firefox\firefox.exe'
+        ],
+        'vscode': ['code'],
+        'code': ['code'],
+        'notepad': ['notepad.exe'],
+        'calculator': ['calc.exe'],
+        'spotify': [
+            r'%APPDATA%\Spotify\Spotify.exe',
+        ],
+        'discord': [
+            r'%LOCALAPPDATA%\Discord\Update.exe --processStart Discord.exe',
+        ],
+        'figma': [
+            r'%LOCALAPPDATA%\Figma\Figma.exe'
+        ],
+        'photoshop': [
+            r'C:\Program Files\Adobe\Adobe Photoshop 2024\Photoshop.exe',
+            r'C:\Program Files\Adobe\Adobe Photoshop 2025\Photoshop.exe',
+        ],
+        'word': ['winword.exe'],
+        'excel': ['excel.exe'],
+        'powerpoint': ['powerpnt.exe'],
+    }
+    
+    return common_paths.get(app_name.lower(), [])
+
 def _open_application(app_name: str) -> str:
     try:
         print(f"🚀 Opening {app_name}...")
@@ -375,118 +562,112 @@ def _open_application(app_name: str) -> str:
         return f"❌ Failed to open {app_name}: {str(e)}"
 
 def _open_windows_app(app_name: str) -> str:
-    """Windows-specific application launcher with multiple strategies."""
-    
-    # Strategy 1: Try common full paths for popular applications
-    common_paths = {
-        'chrome': [
-            r'C:\Program Files\Google\Chrome\Application\chrome.exe',
-            r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-            r'%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe'
-        ],
-        'brave': [
-            r'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe',
-            r'C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe',
-            r'%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe'
-        ],
-        'edge': [
-            r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
-            r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
-        ],
-        'vscode': ['code'],  # Usually in PATH
-        'code': ['code'],
-        'notepad': ['notepad.exe'],
-        'calculator': ['calc.exe'],
-        'spotify': [
-            r'%APPDATA%\Spotify\Spotify.exe',
-            'spotify:'  # Protocol handler
-        ],
-        'figma': [
-            r'%LOCALAPPDATA%\Figma\Figma.exe'
-        ],
-        'photoshop': [
-            r'C:\Program Files\Adobe\Adobe Photoshop 2024\Photoshop.exe',
-            r'C:\Program Files\Adobe\Adobe Photoshop 2020\Photoshop.exe',
-            r'C:\Program Files (x86)\Adobe\Adobe Photoshop 2024\Photoshop.exe'
-        ],
-        'whatsapp': [
-            r'%APPDATA%\Whatsapp\Whatsapp.exe',
-            'whatsapp:'  # Protocol handler
-            ],
-        'word': ['winword.exe'],
-        'excel': ['excel.exe'],
-        'powerpoint': ['powerpnt.exe'],
-        'teams': [
-            r'%LOCALAPPDATA%\Microsoft\Teams\Update.exe --processStart "Teams.exe"'
-        ]
-    }
+    """
+    Enhanced Windows application launcher with multi-strategy approach.
+    Tries methods in order of speed and reliability.
+    """
     
     app_lower = app_name.lower()
+    print(f"🔍 Searching for {app_name}...")
     
-    # Strategy 1: Try known paths
-    if app_lower in common_paths:
-        for path in common_paths[app_lower]:
-            try:
-                print(f"🔍 Trying path: {path}...")
-                # Expand environment variables
-                expanded_path = os.path.expandvars(path)
-                
-                if path.endswith(':'):  # Protocol handler (like spotify:)
-                    os.startfile(path)
-                    return f"✅ Opened {app_name} via protocol"
-                elif os.path.exists(expanded_path):
-                    subprocess.Popen([expanded_path], shell=False)
-                    return f"✅ Opened {app_name}"
-                elif not expanded_path.startswith(('C:', '%')):  # Simple command
-                    subprocess.Popen(path, shell=True)
-                    return f"✅ Opened {app_name}"
-            except Exception as e:
-                continue
+    if("powerpoint" in app_name.lower().strip()):
+        app_name = "powerpnt"
+    elif("word" in app_name.lower().strip()):
+        app_name = "winword"
     
-    # Strategy 2: Try Windows Start Menu search
-    try:
-        print(f"🔍 Trying Start Menu search for: {app_name}...")
-        # Use PowerShell to search and launch via Start Menu
-        powershell_cmd = f'''
-        $app = Get-StartApps | Where-Object {{$_.Name -like "*{app_name}*"}} | Select-Object -First 1
-        if ($app) {{
-            Start-Process "shell:AppsFolder\\$($app.AppID)"
-            Write-Output "Found: $($app.Name)"
-        }} else {{
-            Write-Output "Not found"
-        }}
-        '''
-        
-        result = subprocess.run(
-            ['powershell', '-Command', powershell_cmd],
-            capture_output=True,
-            text=True,
-            shell=True
-        )
-        
-        if "Found:" in result.stdout:
-            return f"✅ Opened {app_name} via Start Menu"
+    # ============================================
+    # STRATEGY 1: Windows Registry (FASTEST & MOST RELIABLE)
+    # ============================================
+    print("  → Checking Windows Registry...")
+    registry_path = _find_app_in_registry(app_name)
+    if registry_path:
+        try:
+            subprocess.Popen([registry_path], shell=False)
+            print(f"  ✅ Found in registry: {registry_path}")
+            return f"✅ Opened {app_name}"
+        except Exception as e:
+            print(f"  ⚠️ Registry path found but failed to launch: {e}")
+    
+    # ============================================
+    # STRATEGY 2: Common Known Paths (INSTANT FALLBACK)
+    # ============================================
+    print("  → Checking common installation paths...")
+    common_paths = _get_common_app_paths(app_name)
+    for path in common_paths:
+        try:
+            # Expand environment variables like %APPDATA%, %LOCALAPPDATA%
+            expanded_path = os.path.expandvars(path)
             
-    except Exception as e:
-        pass
+            # Handle simple commands (like 'code', 'notepad.exe')
+            if not expanded_path.startswith(('C:', 'D:', '%')):
+                subprocess.Popen(path, shell=True)
+                print(f"  ✅ Launched via command: {path}")
+                return f"✅ Opened {app_name}"
+            
+            # Check if file exists at this path
+            if os.path.exists(expanded_path):
+                subprocess.Popen([expanded_path], shell=False)
+                print(f"  ✅ Found at: {expanded_path}")
+                return f"✅ Opened {app_name}"
+                
+        except Exception as e:
+            continue
     
-    # Strategy 3: Try simple command (might work for some apps)
-    try:
-        print(f"🔍 Trying simple command: {app_name}...")
-        subprocess.Popen(app_name, shell=True)
-        return f"✅ Opened {app_name} (simple command)"
-    except Exception:
-        pass
+    # ============================================
+    # STRATEGY 3: PowerShell Get-Command (QUICK PATH LOOKUP)
+    # ============================================
+    print("  → Using PowerShell Get-Command...")
+    ps_path = _find_app_via_powershell(app_name)
+    if ps_path:
+        try:
+            subprocess.Popen([ps_path], shell=False)
+            print(f"  ✅ Found via PowerShell: {ps_path}")
+            return f"✅ Opened {app_name}"
+        except Exception as e:
+            print(f"  ⚠️ PowerShell found path but launch failed: {e}")
     
-    # Strategy 4: Try with .exe extension
-    try:
-        print(f"🔍 Trying {app_name}.exe...")
-        subprocess.Popen(f"{app_name}.exe", shell=True)
-        return f"✅ Opened {app_name}.exe"
-    except Exception:
-        pass
+    # ============================================
+    # STRATEGY 4: Windows Start Menu (COMPREHENSIVE)
+    # ============================================
+    print("  → Searching Windows Start Menu...")
+    if _open_via_start_menu(app_name):
+        print(f"  ✅ Launched via Start Menu")
+        return f"✅ Opened {app_name} via Start Menu"
     
-    return f"❌ Could not find {app_name}. Try using the full application name or check if it's installed."
+    # ============================================
+    # STRATEGY 5: Simple Command Attempts (LAST RESORT)
+    # ============================================
+    print("  → Trying simple command...")
+    for attempt in [app_name, f"{app_name}.exe", app_lower, f"{app_lower}.exe"]:
+        try:
+            # FIRST: Check if command exists using 'where'
+            check_result = subprocess.run(
+                f'where {attempt}',
+                capture_output=True,
+                text=True,
+                shell=True,
+                timeout=3
+            )
+            
+            # Only try to launch if 'where' found the command
+            if check_result.returncode == 0 and check_result.stdout.strip():
+                exe_path = check_result.stdout.strip().split('\n')[0]
+                print(f"  → Found command at: {exe_path}")
+                subprocess.Popen([exe_path], shell=False)
+                print(f"  ✅ Launched: {attempt}")
+                return f"✅ Opened {app_name}"
+            
+        except subprocess.TimeoutExpired:
+            print(f"  ⏱️ Command check timed out for: {attempt}")
+            continue
+        except Exception as e:
+            continue
+    
+    # ============================================
+    # ALL STRATEGIES FAILED
+    # ============================================
+    print(f"  ❌ Could not find {app_name}")
+    return f"❌ Could not find '{app_name}'. Please verify:\n  • The application is installed\n  • The name is spelled correctly\n  • Try using the full application name (e.g., 'Google Chrome' instead of 'chrome')"
 
 def _open_macos_app(app_name: str) -> str:
     """macOS application launcher."""
@@ -718,6 +899,7 @@ def _get_friendly_app_name(proc_name: str) -> str:
  
     pass
 
+
 def _search_and_open_web(platform: str, query: str) -> str:
     try:
         print(f"🔍 Searching '{query}' on {platform}...")
@@ -773,6 +955,7 @@ def _open_website(url: str) -> str:
 
     pass
 
+
 def _system_control(action: str) -> str:
     try:
         print(f"🔧 Performing system action: {action}")
@@ -782,11 +965,9 @@ def _system_control(action: str) -> str:
             'Windows': {
                 'lock': 'rundll32.exe user32.dll,LockWorkStation',
                 'sleep': 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0',
-                'shutdown': 'shutdown /s /t 60',  # 60 second delay for safety
-                'restart': 'shutdown /r /t 60',
                 'volume_up': 'powershell -c "(New-Object -comObject WScript.Shell).SendKeys([char]175)"',
                 'volume_down': 'powershell -c "(New-Object -comObject WScript.Shell).SendKeys([char]174)"',
-                'mute': 'powershell -c "(New-Object -comObject WScript.Shell).SendKeys([char]173)"'
+                'mute': 'powershell -c "(New-Object -comObject WScript.Shell).SendKeys([char]173)"',
             },
             'Darwin': {
                 'lock': 'pmset displaysleepnow',
