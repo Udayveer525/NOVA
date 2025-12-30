@@ -1,4 +1,0 @@
-OPTIMIZATIONS:
-    Make the context management more efficient.
-    Fix tool usage hallucinations.
-    Optimize token usage and avoid repetitive requests.

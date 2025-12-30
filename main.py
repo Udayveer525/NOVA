@@ -1,28 +1,56 @@
-# main.py
+"""Nova Multi-Agent System - Main Entry Point."""
+
 import os
 from dotenv import load_dotenv
-from core.agent import Nova
+from core.coordinator import AgentCoordinator
+from core.api_manager import APIManager
 
-def main() -> None:
-    load_dotenv()
-    nova = Nova()
-    print("🧠 Nova Agent is online! (with web search capability)")
+
+def main():
+    """Initialize and run Nova."""
     
-    print("Type 'exit' or Ctrl-C to shut down.")
+    # Load environment variables
+    load_dotenv()
 
-    try:
-        while True:
-            user_input = input("\nYou: ")
-            if user_input.lower() == "exit":
-                break
-                
-            response = nova.chat(user_input)
-            print(f"Nova: {response}")
+    
+    # Initialize Nova
+    print("\n" + "="*60)
+    print("🌟 NOVA - Multi-Agent Personal AI Companion")
+    print("="*60 + "\n")
+    
+    coordinator = AgentCoordinator()
+    
+    print("\n💬 Chat with Nova (type 'exit' to quit, 'stats' for usage)\n")
+    
+    # Chat loop
+    while True:
+        try:
+            user_input = input("You: ").strip()
             
-    except (KeyboardInterrupt, EOFError):
-        pass
-    finally:
-        print("\n👋 Shutting down Nova. Goodbye!")
+            if not user_input:
+                continue
+            
+            if user_input.lower() in ['exit', 'quit', 'bye']:
+                print("\nNova: Take care, Udayveer! See you soon! 👋")
+                break
+            
+            if user_input.lower() == 'stats':
+                usage = APIManager()
+                print(usage.get_usage_stats())
+                print()
+                continue
+            
+            # Get response from Nova
+            response = coordinator.chat(user_input)
+            
+            print(f"\nNova: {response}\n")
+            
+        except KeyboardInterrupt:
+            print("\n\nNova: Interrupted! Bye! 👋")
+            break
+        except Exception as e:
+            print(f"\n❌ Error: {str(e)}\n")
+
 
 if __name__ == "__main__":
     main()
