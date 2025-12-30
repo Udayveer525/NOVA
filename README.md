@@ -50,11 +50,8 @@ graph TD
 | Core | Python 3.12.3 |
 | :--- | :--- |
 | **Framework:** | LangChain (Agents & Tooling) |
-
 | **LLM Provider:** | Google Gemini API (via google-generativeai) |
-
 | **Memory:** | SQLite (Conversational persistence & Context recall) |
-
 | **Orchestration:** | Custom Coordinator class wrapping LangChain Agents. |
 
 ---
