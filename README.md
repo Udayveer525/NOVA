@@ -56,30 +56,10 @@ graph TD
 
 ---
 
-## 📂 Project Structure
-
-NOVA/
-├── agents/                 # The specialized agents
-│   ├── supervisor/         # Logic for routing and synthesis
-│   ├── dev_agent/          # Code generation tools
-│   ├── research_agent/     # Web search integration
-│   └── system_agent/       # OS interaction tools
-├── core/                   # The engine room
-│   ├── base_agent.py       # LangChain wrapper (create_tool_calling_agent)
-│   ├── coordinator.py      # Manages agent-to-agent message passing
-│   ├── memory_manager.py   # SQLite wrapper for long-term memory
-│   └── api_manager.py      # Handles LLM API calls and token limits
-├── main.py                 # Application entry point
-└── nova_memory.db          # Local persistent storage
-
----
-
 ## 🚧 Challenges & Roadmap
 * **API Cost Optimization:** Currently refactoring the api_manager.py to minimize token usage during multi-step reasoning chains.
 
 * **Context Window Management:** Implementing a sliding window memory in memory_manager.py to handle long-running sessions without hitting LLM limits.
-
-* **Local LLM Support:** Future plans to integrate Ollama to run NOVA entirely offline using Llama 3.
 
 ---
 
