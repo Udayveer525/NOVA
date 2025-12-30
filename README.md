@@ -1,7 +1,7 @@
 # 🌌 NOVA - Autonomous Multi-Agent System
 
 ![Status](https://img.shields.io/badge/Status-Prototype-blueviolet)
-![AI Model](https://img.shields.io/badge/Model-Gemini_1.5_Pro-blue)
+![AI Model](https://img.shields.io/badge/Model-Gemini_2.5_flash-blue)
 ![Language](https://img.shields.io/badge/Language-Python_3.10+-3776AB?logo=python&logoColor=white)
 
 **NOVA** (Neural Orchestration & Virtual Assistant) is a locally hosted, multi-agent AI system capable of performing complex tasks by coordinating specialized sub-agents. Unlike standard chatbots, NOVA acts as a **Supervisor**, breaking down user intents and delegating work to agents capable of file manipulation, web research, and software development.
