@@ -47,8 +47,8 @@ graph TD
 
 ## 🛠️ Tech Stack
 
-| **Core** | Python 3.12.3 |
-
+| Core | Python 3.12.3 |
+| :--- | :--- |
 | **Framework:** | LangChain (Agents & Tooling) |
 
 | **LLM Provider:** | Google Gemini API (via google-generativeai) |
