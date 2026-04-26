@@ -1,0 +1,11 @@
+# Gitignore for portfolio-website
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Environments
+.env
+.venv/
+
+# Dependencies
+node_modules/
