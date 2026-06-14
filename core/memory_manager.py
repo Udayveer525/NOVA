@@ -1,9 +1,11 @@
 import sqlite3
 from datetime import datetime
-from pathlib import Path
+
+from core.config import DB_PATH
+
 
 class MemoryManager:
-    def __init__(self, db_path="nova_memory.db"):
+    def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
         self._init_database()
     

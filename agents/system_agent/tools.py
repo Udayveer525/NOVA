@@ -50,8 +50,8 @@ def _find_app_in_registry(app_name: str) -> str:
         (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths"),
     ]
     
-    if(app_name.lower().endswith('.exe')):
-        app_name.strip('.exe')
+    if app_name.lower().endswith(".exe"):
+        app_name = app_name[:-4]
     
     # Try common executable name variations
     possible_names = [
@@ -440,10 +440,9 @@ def _list_user_applications() -> str:
     user_running_apps = []
     seen_apps = set()
     
-    for proc in psutil.process_iter(['pid', 'name', 'exe']):
+    for proc in psutil.process_iter(["pid", "name", "exe"]):
         try:
-            print(f"🔍 Inspecting process: {proc.info['name']}")
-            proc_name = proc.info['name'].lower()
+            proc_name = proc.info["name"].lower()
             
             # Filter 1: Must be in our known user apps list
             if proc_name not in user_apps:

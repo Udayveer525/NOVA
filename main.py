@@ -1,55 +1,73 @@
-"""Nova Multi-Agent System - Main Entry Point."""
+"""Nova Multi-Agent System — Main Entry Point."""
 
-import os
+import sys
+
 from dotenv import load_dotenv
+
 from core.coordinator import AgentCoordinator
-from core.api_manager import APIManager
 
 
 def main():
-    """Initialize and run Nova."""
-    
-    # Load environment variables
     load_dotenv()
 
-    
-    # Initialize Nova
-    print("\n" + "="*60)
+    if sys.platform == "win32":
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+
+    print("\n" + "=" * 60)
     print("🌟 NOVA - Multi-Agent Personal AI Companion")
-    print("="*60 + "\n")
-    
-    coordinator = AgentCoordinator()
-    
+    print("=" * 60 + "\n")
+
+    try:
+        coordinator = AgentCoordinator()
+    except ValueError as e:
+        print(f"\n❌ Configuration error: {e}")
+        print("   Create a .env file with GOOGLE_API_KEY=your_key_here")
+        sys.exit(1)
+
     print("\n💬 Chat with Nova (type 'exit' to quit, 'stats' for usage)\n")
-    
-    # Chat loop
+
     while True:
         try:
             user_input = input("You: ").strip()
-            
+
             if not user_input:
                 continue
-            
-            if user_input.lower() in ['exit', 'quit', 'bye']:
-                print("\nNova: Take care, Udayveer! See you soon! 👋")
+
+            if user_input.lower() in ("exit", "quit", "bye"):
+                print("\nNova: Take care! See you soon! 👋")
                 break
-            
-            if user_input.lower() == 'stats':
-                usage = APIManager()
-                print(usage.get_usage_stats())
+
+            if user_input.lower() == "stats":
+                print(coordinator.api_manager.get_usage_stats())
                 print()
                 continue
-            
-            # Get response from Nova
+
+            if user_input.lower() == "help":
+                print(_help_text())
+                print()
+                continue
+
             response = coordinator.chat(user_input)
-            
             print(f"\nNova: {response}\n")
-            
+
         except KeyboardInterrupt:
             print("\n\nNova: Interrupted! Bye! 👋")
             break
         except Exception as e:
-            print(f"\n❌ Error: {str(e)}\n")
+            print(f"\n❌ Error: {e}\n")
+
+
+def _help_text() -> str:
+    return """Available commands:
+  exit / quit / bye  — End the session
+  stats              — Show API key usage
+  help               — Show this message
+
+Nova routes your requests to specialized agents:
+  • Dev Agent      — coding, files, git, terminal
+  • System Agent   — open apps, system controls
+  • Research Agent — web search, documentation"""
 
 
 if __name__ == "__main__":

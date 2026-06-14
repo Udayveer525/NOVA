@@ -10,7 +10,6 @@ class SupervisorAgent(BaseAgent):
     
     def __init__(self, coordinator):
         self.user_name = "Udayveer"
-        self.coordinator = coordinator  # Store coordinator reference
         super().__init__(coordinator, "Supervisor")
     
     def get_tools(self):
